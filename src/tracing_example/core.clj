@@ -7,23 +7,33 @@
 
 (def ^Tracer tracer (delay (.getTracer (Configuration/fromEnv))))
 
-(defmacro span [^String span-name & body]
-  `(with-open [^Scope scope# (.startActive (.buildSpan @tracer ~span-name) true)]
-     ~@body))
+(def ^{:dynamic true :no-doc true} ^Span span
+  nil)
+
+(defmacro create-span [^String span-name & body]
+  `(binding [^Span span (.start (.buildSpan @tracer ~span-name))]
+     (with-open [^Scope scope# (.activate (.scopeManager @tracer) span true)]
+       ~@body)))
 
 ;; Batch processing
 
 (defn get-messages []
-  (span "get-messages"
-        (Thread/sleep 1000)
-        (range (rand-int 100))))
+  (create-span "get-messages"
+    (let [ids (range (rand-int 100))]
+      (.setTag span "test" "hello")
+      (doseq [id ids]
+        (create-span "message-id"
+          (.setTag span "message-id" (str id))))
+      (Thread/sleep 1000)
+      ids)))
 
 (defn process-messages [messages]
-  (span "process-messages"
-        (run! (fn [message] (Thread/sleep (rand-int 100)) message) messages)))
+  (create-span "process-messages"
+               (.log span "Hello world")
+               (run! (fn [message] (Thread/sleep (rand-int 100)) message) messages)))
 
 (defn publish-messages [messages]
-  (span "publish-messages"
+  (create-span "publish-messages"
         (Thread/sleep 500)))
 
 ;; Putting all together
@@ -33,7 +43,7 @@
   (while true
     (do
       (println "Processing batch")
-      (span "process-batch"
+      (create-span "process-batch"
             (-> (get-messages)
                 (process-messages)
                 (publish-messages)))
