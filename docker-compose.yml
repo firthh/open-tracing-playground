@@ -14,11 +14,12 @@ services:
       - "9411:9411"
 
   adapter:
-    image: clojure
+    image: clojure:lein-alpine
     command: lein run
     working_dir: /srv
     volumes:
       - ".:/srv"
+      - "${HOME}/.m2:/root/.m2"
     environment:
       JAEGER_SERVICE_NAME: "batch-processor"
       JAEGER_ENDPOINT: "http://jaeger:14268/api/traces"

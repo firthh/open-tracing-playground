@@ -7,21 +7,24 @@
 
 (def ^Tracer tracer (delay (.getTracer (Configuration/fromEnv))))
 
-(defmacro span [^String span-name body]
+(defmacro span [^String span-name & body]
   `(with-open [^Scope scope# (.startActive (.buildSpan @tracer ~span-name) true)]
-     ~body))
+     ~@body))
 
 ;; Batch processing
 
 (defn get-messages []
-  (Thread/sleep 1000)
-  (range (rand-int 100)))
+  (span "get-messages"
+        (Thread/sleep 1000)
+        (range (rand-int 100))))
 
 (defn process-messages [messages]
-  (map (fn [message] (Thread/sleep (rand-int 100)) message) messages))
+  (span "process-messages"
+        (run! (fn [message] (Thread/sleep (rand-int 100)) message) messages)))
 
 (defn publish-messages [messages]
-  (Thread/sleep 500))
+  (span "publish-messages"
+        (Thread/sleep 500)))
 
 ;; Putting all together
 
