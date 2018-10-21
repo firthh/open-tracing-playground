@@ -19,9 +19,9 @@
 
 (defn get-messages []
   (create-span "get-messages"
-    (let [ids (range (rand-int 100))]
+    (let [ids (map (fn [_] {:id (rand-int 1000)}) (range (rand-int 100)))]
       (.setTag span "test" "hello")
-      (doseq [id ids]
+      (doseq [{:keys [id]} ids]
         (create-span "message-id"
           (.setTag span "message-id" (str id))))
       (Thread/sleep 1000)
@@ -29,12 +29,12 @@
 
 (defn process-messages [messages]
   (create-span "process-messages"
-               (.log span "Hello world")
-               (run! (fn [message] (Thread/sleep (rand-int 100)) message) messages)))
+    (.log span "Hello world")
+    (run! (fn [{:keys [id] :as m}] (Thread/sleep (/ id 10)) m) messages)))
 
 (defn publish-messages [messages]
   (create-span "publish-messages"
-        (Thread/sleep 500)))
+    (Thread/sleep 500)))
 
 ;; Putting all together
 
@@ -44,8 +44,8 @@
     (do
       (println "Processing batch")
       (create-span "process-batch"
-            (-> (get-messages)
-                (process-messages)
-                (publish-messages)))
+        (-> (get-messages)
+            (process-messages)
+            (publish-messages)))
       (println "Sleeping")
       (Thread/sleep 5000))))
